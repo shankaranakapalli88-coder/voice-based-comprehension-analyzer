@@ -1,0 +1,11 @@
+vbcu_env/
+__pycache__/
+*.pyc
+
+uploads/
+reports/
+
+.streamlit/
+
+*.wav
+*.pdf
