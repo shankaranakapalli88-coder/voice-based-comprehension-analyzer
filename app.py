@@ -1,8 +1,10 @@
 import streamlit as st
+import pandas as pd
 import librosa
 import librosa.display
 import matplotlib.pyplot as plt
 
+from save_results import save_result
 from speech_to_text import transcribe_audio
 from semantic_eval import similarity_score
 from scoring_engine import (
@@ -41,7 +43,7 @@ if uploaded_file is not None and expected_answer:
 
     st.success("Audio uploaded successfully.")
 
-    # Audio Player
+    # Audio Playback
     st.subheader("Audio Playback")
     st.audio(audio_path)
 
@@ -60,7 +62,7 @@ if uploaded_file is not None and expected_answer:
 
     st.pyplot(fig)
 
-    # Speech-to-Text
+    # Transcription
     student_answer = transcribe_audio(audio_path)
 
     # Semantic Similarity
@@ -87,6 +89,9 @@ if uploaded_file is not None and expected_answer:
     # Grade
     result_grade = classify(score)
 
+    # Save result
+    save_result(score, result_grade)
+
     # Display Answers
     col1, col2 = st.columns(2)
 
@@ -98,7 +103,7 @@ if uploaded_file is not None and expected_answer:
         st.subheader("Student Answer")
         st.write(student_answer)
 
-    # Metrics Dashboard
+    # Metrics
     st.subheader("Evaluation Metrics")
 
     m1, m2, m3 = st.columns(3)
@@ -129,18 +134,21 @@ if uploaded_file is not None and expected_answer:
         f"Pause Ratio: {pause_ratio:.2f}"
     )
 
-    # Score Progress Bar
+    # Progress Bar
     st.subheader("Understanding Score")
 
-    progress_value = min(int(score), 100)
+    progress_value = min(
+        max(int(score), 0),
+        100
+    )
 
     st.progress(progress_value)
 
-    # Grade
+    # Result
     st.subheader("Result")
     st.success(result_grade)
 
-    # Generate PDF Report
+    # Generate PDF
     report_path = generate_report(
         "Voice Comprehension",
         expected_answer,
@@ -149,7 +157,7 @@ if uploaded_file is not None and expected_answer:
         result_grade
     )
 
-    # Download Report
+    # Download PDF
     st.subheader("Report")
 
     with open(report_path, "rb") as pdf_file:
@@ -160,4 +168,86 @@ if uploaded_file is not None and expected_answer:
         data=pdf_bytes,
         file_name="comprehension_report.pdf",
         mime="application/pdf"
+    )
+
+# ==================================
+# Evaluation History
+# ==================================
+
+st.subheader("Evaluation History")
+
+try:
+    history = pd.read_csv(
+        "reports/results.csv"
+    )
+
+    st.dataframe(
+        history,
+        use_container_width=True
+    )
+
+      # Download CSV History
+
+with open("reports/results.csv", "rb") as file:
+    csv_bytes = file.read()
+
+st.download_button(
+    label="📥 Download Evaluation History",
+    data=csv_bytes,
+    file_name="evaluation_history.csv",
+    mime="text/csv"
+)
+
+    # ==================================
+    # Score Trend
+    # ==================================
+
+    st.subheader("Score Trend")
+
+    scores = pd.to_numeric(
+        history["Score"],
+        errors="coerce"
+    )
+
+    scores = scores.dropna()
+
+    if len(scores) > 0:
+
+        fig, ax = plt.subplots()
+
+        ax.plot(
+            range(1, len(scores) + 1),
+            scores.tolist(),
+            marker="o"
+        )
+
+        ax.set_xlabel(
+            "Evaluation Number"
+        )
+
+        ax.set_ylabel(
+            "Score"
+        )
+
+        ax.set_title(
+            "Performance Trend"
+        )
+
+        st.pyplot(fig)
+
+    else:
+        st.warning(
+            "No valid scores available."
+        )
+
+except FileNotFoundError:
+
+    st.info(
+        "No evaluation history available."
+    )
+
+except Exception as e:
+
+    st.error(
+        f"History Error: {e}"
     )
