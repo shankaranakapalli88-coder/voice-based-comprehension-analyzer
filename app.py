@@ -33,13 +33,17 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None and expected_answer:
 
-    # Save audio
+    # Save uploaded audio
     audio_path = f"uploads/{uploaded_file.name}"
 
     with open(audio_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
     st.success("Audio uploaded successfully.")
+
+    # Audio Player
+    st.subheader("Audio Playback")
+    st.audio(audio_path)
 
     # Waveform
     st.subheader("Waveform")
@@ -56,7 +60,7 @@ if uploaded_file is not None and expected_answer:
 
     st.pyplot(fig)
 
-    # Transcription
+    # Speech-to-Text
     student_answer = transcribe_audio(audio_path)
 
     # Semantic Similarity
@@ -83,7 +87,7 @@ if uploaded_file is not None and expected_answer:
     # Grade
     result_grade = classify(score)
 
-    # Two-column layout
+    # Display Answers
     col1, col2 = st.columns(2)
 
     with col1:
@@ -94,12 +98,28 @@ if uploaded_file is not None and expected_answer:
         st.subheader("Student Answer")
         st.write(student_answer)
 
-    # Metrics
+    # Metrics Dashboard
     st.subheader("Evaluation Metrics")
 
-    st.write(
-        f"Semantic Similarity: {semantic_score:.2f}%"
-    )
+    m1, m2, m3 = st.columns(3)
+
+    with m1:
+        st.metric(
+            "Semantic Similarity",
+            f"{semantic_score:.2f}%"
+        )
+
+    with m2:
+        st.metric(
+            "Final Score",
+            f"{score:.2f}"
+        )
+
+    with m3:
+        st.metric(
+            "Grade",
+            result_grade
+        )
 
     st.write(
         f"Filler Ratio: {filler_ratio_value:.2f}"
@@ -109,12 +129,15 @@ if uploaded_file is not None and expected_answer:
         f"Pause Ratio: {pause_ratio:.2f}"
     )
 
-    st.write(
-        f"Final Score: {score:.2f}"
-    )
+    # Score Progress Bar
+    st.subheader("Understanding Score")
+
+    progress_value = min(int(score), 100)
+
+    st.progress(progress_value)
 
     # Grade
-    st.subheader("Grade")
+    st.subheader("Result")
     st.success(result_grade)
 
     # Generate PDF Report
@@ -126,14 +149,15 @@ if uploaded_file is not None and expected_answer:
         result_grade
     )
 
+    # Download Report
     st.subheader("Report")
 
-    st.success("PDF report generated successfully.")
-
     with open(report_path, "rb") as pdf_file:
-        st.download_button(
-            label="📄 Download PDF Report",
-            data=pdf_file,
-            file_name="comprehension_report.pdf",
-            mime="application/pdf"
-        )
+        pdf_bytes = pdf_file.read()
+
+    st.download_button(
+        label="📄 Download PDF Report",
+        data=pdf_bytes,
+        file_name="comprehension_report.pdf",
+        mime="application/pdf"
+    )
